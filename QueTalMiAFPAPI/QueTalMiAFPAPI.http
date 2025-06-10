@@ -1,0 +1,6 @@
+@QueTalMiAFPAPI_HostAddress = http://localhost:5210
+
+GET {{QueTalMiAFPAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
