@@ -157,6 +157,12 @@ namespace Cdk {
                 Stage = lambdaRestApi.DeploymentStage.StageName,
             });
 
+            // Se crea Usage Plan para configurar API Key...
+            UsagePlan usagePlan = lambdaRestApi.AddUsagePlan($"{appName}APIUsagePlan", new UsagePlanProps { 
+                Name = $"{appName}APIUsagePlan",
+                Description = $"Usage Plan de {appName} API",
+            });
+
             // Se crea API Key...
             ApiKey apiGatewayKey = new ApiKey(this, $"{appName}APIAPIKey", new ApiKeyProps { 
                 ApiKeyName = $"{appName}APIAPIKey",
@@ -165,6 +171,9 @@ namespace Cdk {
                     lambdaRestApi.DeploymentStage
                 ],
             });
+
+            // Se asocia API Key a Usage Plan...
+            usagePlan.AddApiKey(apiGatewayKey);
 
             // Se configura permisos para la ejecucíon de la Lambda desde el API Gateway...
             ArnPrincipal arnPrincipal = new("apigateway.amazonaws.com");
