@@ -158,18 +158,21 @@ namespace Cdk {
             });
 
             // Se crea Usage Plan para configurar API Key...
-            UsagePlan usagePlan = lambdaRestApi.AddUsagePlan($"{appName}APIUsagePlan", new UsagePlanProps { 
+            UsagePlan usagePlan = new UsagePlan(this, $"{appName}APIUsagePlan", new UsagePlanProps { 
                 Name = $"{appName}APIUsagePlan",
                 Description = $"Usage Plan de {appName} API",
+                ApiStages = [
+                    new UsagePlanPerApiStage() {
+                        Api = lambdaRestApi,
+                        Stage = lambdaRestApi.DeploymentStage
+                    }
+                ],
             });
 
             // Se crea API Key...
             ApiKey apiGatewayKey = new ApiKey(this, $"{appName}APIAPIKey", new ApiKeyProps { 
                 ApiKeyName = $"{appName}APIAPIKey",
                 Description = $"API Key de {appName} API",
-                Stages = [
-                    lambdaRestApi.DeploymentStage
-                ],
             });
 
             // Se asocia API Key a Usage Plan...
