@@ -28,6 +28,7 @@ jobs:
             RDS_SECURITY_GROUP_ID: ${{ vars.RDS_SECURITY_GROUP_ID }}
             ALLOWED_DOMAINS: ${{ vars.ALLOWED_DOMAINS }}
             SECRET_ARN_CONNECTION_STRING: ${{ vars.SECRET_ARN_CONNECTION_STRING }}
+            PARAMETER_NAME_API_ALLOWED_DOMAINS: ${{ vars.PARAMETER_NAME_API_ALLOWED_DOMAINS }}
                         
         steps:
             - name: Checkout Repositorio
