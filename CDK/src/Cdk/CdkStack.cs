@@ -28,6 +28,7 @@ namespace Cdk {
             string allowedDomains = System.Environment.GetEnvironmentVariable("ALLOWED_DOMAINS") ?? throw new ArgumentNullException("ALLOWED_DOMAINS");
             string secretArnConnectionString = System.Environment.GetEnvironmentVariable("SECRET_ARN_CONNECTION_STRING") ?? throw new ArgumentNullException("SECRET_ARN_CONNECTION_STRING");
             string parameterNameApiAllowedDomains = System.Environment.GetEnvironmentVariable("PARAMETER_NAME_API_ALLOWED_DOMAINS") ?? throw new ArgumentNullException("PARAMETER_NAME_API_ALLOWED_DOMAINS");
+            string apiKey = System.Environment.GetEnvironmentVariable("API_KEY") ?? throw new ArgumentNullException("API_KEY");
 
             // Se obtiene la VPC y subnets...
             IVpc vpc = Vpc.FromLookup(this, $"{appName}Vpc", new VpcLookupOptions {
@@ -155,6 +156,16 @@ namespace Cdk {
                 ApiMappingKey = apiMappingKey,
                 ApiId = lambdaRestApi.RestApiId,
                 Stage = lambdaRestApi.DeploymentStage.StageName,
+            });
+
+            // Se crea API Key...
+            ApiKey apiGatewayKey = new ApiKey(this, $"{appName}APIAPIKey", new ApiKeyProps { 
+                ApiKeyName = $"{appName}APIAPIKey",
+                Description = $"API Key de {appName} API",
+                Stages = [
+                    lambdaRestApi.DeploymentStage
+                ],
+                Value = apiKey
             });
 
             // Se configura permisos para la ejecucíon de la Lambda desde el API Gateway...

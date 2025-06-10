@@ -29,6 +29,7 @@ jobs:
             ALLOWED_DOMAINS: ${{ vars.ALLOWED_DOMAINS }}
             SECRET_ARN_CONNECTION_STRING: ${{ vars.SECRET_ARN_CONNECTION_STRING }}
             PARAMETER_NAME_API_ALLOWED_DOMAINS: ${{ vars.PARAMETER_NAME_API_ALLOWED_DOMAINS }}
+            API_KEY: ${{ secrets.API_KEY }}
                         
         steps:
             - name: Checkout Repositorio
