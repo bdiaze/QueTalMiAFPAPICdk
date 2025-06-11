@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using QueTalMiAFPAPI.Entities;
+using QueTalMiAFPAPI.Helpers;
 using QueTalMiAFPAPI.Interfaces;
 using QueTalMiAFPAPI.Models;
 using System;
@@ -11,7 +12,7 @@ namespace QueTalMiAFPAPI.Controllers {
     [Produces("application/json")]
     [Route("[controller]")]
 	[ApiController]
-	public class CuotaUfComisionController(/*IAWSS3FileService aws3FileService,*/ ICuotaUfComisionDAO cuotaUfComisionDAO) : ControllerBase {
+	public class CuotaUfComisionController(S3BucketHelper s3BucketHelper, ICuotaUfComisionDAO cuotaUfComisionDAO) : ControllerBase {
 
         /// <summary>
         /// Obtiene los valores cuotas y UF para las AFPs y fondos indicados, según un rango de fecha.
@@ -54,24 +55,16 @@ namespace QueTalMiAFPAPI.Controllers {
 
             List<CuotaUf>? cuotas = await cuotaUfComisionDAO.ObtenerCuotas(afps, fondos, dtFechaInicio, dtFechaFinal);
 
-            // string jsonRetorno = JsonSerializer.Serialize(cuotas);
-            // int cantBytes = System.Text.Encoding.UTF8.GetByteCount(jsonRetorno);
+            string jsonRetorno = JsonSerializer.Serialize(cuotas);
+            int cantBytes = System.Text.Encoding.UTF8.GetByteCount(jsonRetorno);
 
-            /*
+            SalObtenerCuotas retorno = new();
             if (cantBytes > 6 * 1000 * 1000) {
-                string s3Url = await _aws3FileService.UploadResponse(jsonRetorno);
-                if (s3Url == null) {
-                    throw new Exception("No se logró subir la respuesta al bucket de S3.");
-                }
-                retorno.S3Url = s3Url;
+                retorno.S3Url = await s3BucketHelper.UploadFile(jsonRetorno);
             } else {
                 retorno.ListaCuotas = cuotas;
             }
-            */
 
-            SalObtenerCuotas retorno = new() {
-                ListaCuotas = cuotas
-            };
             return retorno;
         }
 

@@ -1,3 +1,4 @@
+using Amazon.S3;
 using QueTalMiAFPAPI.Helpers;
 using QueTalMiAFPAPI.Interfaces;
 using QueTalMiAFPAPI.Repositories;
@@ -24,6 +25,9 @@ builder.Services.AddCors(item => {
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+builder.Services.AddAWSService<IAmazonS3>();
+builder.Services.AddSingleton<S3BucketHelper, S3BucketHelper>();
 
 builder.Services.AddSingleton<ConnectionString, ConnectionString>();
 builder.Services.AddSingleton<IComisionDAO, ComisionDAO>();
