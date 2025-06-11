@@ -10,7 +10,7 @@ namespace QueTalMiAFPAPI.Helpers {
             string keyName = Guid.NewGuid().ToString();
 
             using MemoryStream stream = new();
-            using StreamWriter writer = new StreamWriter(stream, Encoding.UTF8);
+            using StreamWriter writer = new(stream, Encoding.UTF8);
             writer.Write(contenido);
             writer.Flush();
             stream.Position = 0;

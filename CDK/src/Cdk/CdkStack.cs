@@ -64,7 +64,7 @@ namespace Cdk {
             });
 
             // Se crea bucket para almacenar respuestas muy grandes para API Gateway...
-            Bucket bucket = new Bucket(this, $"{appName}APIBucketLargeResponses", new BucketProps {
+            Bucket bucket = new(this, $"{appName}APIBucketLargeResponses", new BucketProps {
                 BucketName = $"{appName.ToLower()}api-large-responses",
                 LifecycleRules = [
                     new LifecycleRule { 
@@ -117,7 +117,7 @@ namespace Cdk {
                                         "s3:PutObject"
                                     ],
                                     Resources = [
-                                        bucket.BucketArn,
+                                        $"{bucket.BucketArn}/*",
                                     ],
                                 }),
                             ]
@@ -177,7 +177,7 @@ namespace Cdk {
             });
 
             // Creación de la CfnApiMapping para el API Gateway...
-            CfnApiMapping apiMapping = new(this, $"{appName}APIApiMapping", new CfnApiMappingProps {
+            _ = new CfnApiMapping(this, $"{appName}APIApiMapping", new CfnApiMappingProps {
                 DomainName = domainName,
                 ApiMappingKey = apiMappingKey,
                 ApiId = lambdaRestApi.RestApiId,
