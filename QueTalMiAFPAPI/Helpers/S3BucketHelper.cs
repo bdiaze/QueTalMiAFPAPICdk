@@ -6,7 +6,7 @@ namespace QueTalMiAFPAPI.Helpers {
     public class S3BucketHelper(IAmazonS3 amazonS3) {
 
         public async Task<string> UploadFile(string contenido) {
-            string bucketArn = Environment.GetEnvironmentVariable("BUCKET_ARN_LARGE_RESPONSES") ?? throw new ArgumentNullException("BUCKET_ARN_LARGE_RESPONSES");
+            string bucketName = Environment.GetEnvironmentVariable("BUCKET_NAME_LARGE_RESPONSES") ?? throw new ArgumentNullException("BUCKET_NAME_LARGE_RESPONSES");
             string keyName = Guid.NewGuid().ToString();
 
             using MemoryStream stream = new();
@@ -16,7 +16,7 @@ namespace QueTalMiAFPAPI.Helpers {
             stream.Position = 0;
 
             PutObjectRequest request = new() {
-                BucketName = bucketArn,
+                BucketName = bucketName,
                 Key = keyName,
                 InputStream = stream,
             };

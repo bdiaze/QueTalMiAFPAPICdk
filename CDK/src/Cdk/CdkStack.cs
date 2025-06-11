@@ -140,7 +140,7 @@ namespace Cdk {
                     { "APP_NAME", appName },
                     { "SECRET_ARN_CONNECTION_STRING", secretArnConnectionString },
                     { "PARAMETER_ARN_API_ALLOWED_DOMAINS", stringParameterApiAllowedDomains.ParameterArn },
-                    { "BUCKET_ARN_LARGE_RESPONSES", bucket.BucketArn }
+                    { "BUCKET_NAME_LARGE_RESPONSES", bucket.BucketName }
                 },
                 Vpc = vpc,
                 VpcSubnets = new SubnetSelection {
