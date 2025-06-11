@@ -59,7 +59,7 @@ namespace QueTalMiAFPAPI.Controllers {
             int cantBytes = System.Text.Encoding.UTF8.GetByteCount(jsonRetorno);
 
             SalObtenerCuotas retorno = new();
-            if (cantBytes > 6 * 1000 * 1000) {
+            if (cantBytes > 5 * 1000 * 1000) {
                 retorno.S3Url = await s3BucketHelper.UploadFile(jsonRetorno);
             } else {
                 retorno.ListaCuotas = cuotas;
