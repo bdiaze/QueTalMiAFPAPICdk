@@ -5,6 +5,7 @@ using Amazon.CDK.AWS.EC2;
 using Amazon.CDK.AWS.IAM;
 using Amazon.CDK.AWS.Lambda;
 using Amazon.CDK.AWS.Logs;
+using Amazon.CDK.AWS.S3;
 using Amazon.CDK.AWS.SSM;
 using Constructs;
 using System;
@@ -62,6 +63,22 @@ namespace Cdk {
                 Tier = ParameterTier.STANDARD,
             });
 
+            // Se crea bucket para almacenar respuestas muy grandes para API Gateway...
+            Bucket bucket = new Bucket(this, $"{appName}APIBucketLargeResponses", new BucketProps {
+                BucketName = $"{appName.ToLower()}api-large-responses",
+                LifecycleRules = [
+                    new LifecycleRule { 
+                        Id = $"{appName.ToLower()}-large-responses-removal",
+                        Enabled = true,
+                        Expiration = Duration.Days(1),
+                    }
+                ],
+                BlockPublicAccess = BlockPublicAccess.BLOCK_ALL,
+                Versioned = false,
+                AutoDeleteObjects = true,
+                RemovalPolicy = RemovalPolicy.DESTROY,
+            });
+
             // Creación de role para la función lambda...
             IRole roleLambda = new Role(this, $"{appName}APILambdaRole", new RoleProps {
                 RoleName = $"{appName}APILambdaRole",
@@ -93,7 +110,16 @@ namespace Cdk {
                                     Resources = [
                                         stringParameterApiAllowedDomains.ParameterArn,
                                     ],
-                                })
+                                }),
+                                new PolicyStatement(new PolicyStatementProps{
+                                    Sid = $"{appName}AccessToPutObject",
+                                    Actions = [
+                                        "s3:PutObject"
+                                    ],
+                                    Resources = [
+                                        bucket.BucketArn,
+                                    ],
+                                }),
                             ]
                         })
                     }
@@ -114,6 +140,7 @@ namespace Cdk {
                     { "APP_NAME", appName },
                     { "SECRET_ARN_CONNECTION_STRING", secretArnConnectionString },
                     { "PARAMETER_ARN_API_ALLOWED_DOMAINS", stringParameterApiAllowedDomains.ParameterArn },
+                    { "BUCKET_ARN_LARGE_RESPONSES", bucket.BucketArn }
                 },
                 Vpc = vpc,
                 VpcSubnets = new SubnetSelection {
@@ -158,7 +185,7 @@ namespace Cdk {
             });
 
             // Se crea Usage Plan para configurar API Key...
-            UsagePlan usagePlan = new UsagePlan(this, $"{appName}APIUsagePlan", new UsagePlanProps { 
+            UsagePlan usagePlan = new(this, $"{appName}APIUsagePlan", new UsagePlanProps { 
                 Name = $"{appName}APIUsagePlan",
                 Description = $"Usage Plan de {appName} API",
                 ApiStages = [
@@ -170,7 +197,7 @@ namespace Cdk {
             });
 
             // Se crea API Key...
-            ApiKey apiGatewayKey = new ApiKey(this, $"{appName}APIAPIKey", new ApiKeyProps { 
+            ApiKey apiGatewayKey = new(this, $"{appName}APIAPIKey", new ApiKeyProps { 
                 ApiKeyName = $"{appName}APIAPIKey",
                 Description = $"API Key de {appName} API",
             });
