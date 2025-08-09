@@ -1,9 +1,12 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Amazon.Lambda.Core;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Hosting;
 using QueTalMiAFPAPI.Entities;
 using QueTalMiAFPAPI.Interfaces;
 using QueTalMiAFPAPI.Models;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -20,26 +23,40 @@ namespace QueTalMiAFPAPI.Controllers {
 		[Route("[action]")]
 		[HttpPost]
 		public async Task<ActionResult<SalActualizacionMasivaComision>> ActualizacionMasiva(EntActualizacionMasivaComision comisionesExtraidas) {
-			SalActualizacionMasivaComision salida = new() {
-				CantComisionesInsertadas = 0,
-				CantComisionesActualizadas = 0
-			};
+			Stopwatch stopwatch = Stopwatch.StartNew();
 
-			foreach (Comision comision in comisionesExtraidas.Comisiones) {
-				Comision? comisionExistente = await comisionDAO.ObtenerComision(comision.TipoComision, comision.Afp, comision.Fecha);
+			try {
+				SalActualizacionMasivaComision salida = new() {
+					CantComisionesInsertadas = 0,
+					CantComisionesActualizadas = 0
+				};
 
-				if (comisionExistente == null) {
-					await comisionDAO.InsertarComision(comision);
-					salida.CantComisionesInsertadas++;
-				} else if (comisionExistente.Valor != comision.Valor || comisionExistente.TipoValor != comision.TipoValor) {
-					comisionExistente.Valor = comision.Valor;
-					comisionExistente.TipoValor = comision.TipoValor;
-					await comisionDAO.ActualizarComision(comisionExistente);
-					salida.CantComisionesActualizadas++;
+				foreach (Comision comision in comisionesExtraidas.Comisiones) {
+					Comision? comisionExistente = await comisionDAO.ObtenerComision(comision.TipoComision, comision.Afp, comision.Fecha);
+
+					if (comisionExistente == null) {
+						await comisionDAO.InsertarComision(comision);
+						salida.CantComisionesInsertadas++;
+					} else if (comisionExistente.Valor != comision.Valor || comisionExistente.TipoValor != comision.TipoValor) {
+						comisionExistente.Valor = comision.Valor;
+						comisionExistente.TipoValor = comision.TipoValor;
+						await comisionDAO.ActualizarComision(comisionExistente);
+						salida.CantComisionesActualizadas++;
+					}
 				}
-			}
 
-			return salida;
+                LambdaLogger.Log(
+                    $"[POST] - [ComisionController] - [ActualizacionMasiva] - [{stopwatch.ElapsedMilliseconds} ms] - [{StatusCodes.Status200OK}] - " +
+                    $"Actualización masiva de comisiones exitosa: {salida.CantComisionesInsertadas} insertadas y {salida.CantComisionesActualizadas} actualizadas.");
+
+                return salida;
+			} catch (Exception ex) {
+                LambdaLogger.Log(
+                    $"[POST] - [ComisionController] - [ActualizacionMasiva] - [{stopwatch.ElapsedMilliseconds} ms] - [{StatusCodes.Status500InternalServerError}] - " +
+                    $"Ocurrió un error en la actualización masiva de comisiones. " +
+                    $"{ex}");
+                return StatusCode(StatusCodes.Status500InternalServerError);
+			}
 		}
 	}
 }

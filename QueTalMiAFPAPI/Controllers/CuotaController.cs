@@ -1,8 +1,10 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Amazon.Lambda.Core;
+using Microsoft.AspNetCore.Mvc;
 using QueTalMiAFPAPI.Entities;
 using QueTalMiAFPAPI.Interfaces;
 using QueTalMiAFPAPI.Models;
 using System;
+using System.Diagnostics;
 using System.Globalization;
 using System.Threading.Tasks;
 
@@ -19,25 +21,39 @@ namespace QueTalMiAFPAPI.Controllers {
 		[Route("[action]")]
 		[HttpPost]
 		public async Task<ActionResult<SalActualizacionMasivaCuota>> ActualizacionMasiva(EntActualizacionMasivaCuota cuotasExtraidas) {
-			SalActualizacionMasivaCuota salida = new() {
-				CantCuotasInsertadas = 0,
-				CantCuotasActualizadas = 0
-			};
+            Stopwatch stopwatch = Stopwatch.StartNew();
 
-			foreach (Cuota cuota in cuotasExtraidas.Cuotas) {
-				Cuota? cuotaExistente = await cuotaDAO.ObtenerCuota(cuota.Afp, cuota.Fecha, cuota.Fondo);
+            try {
+                SalActualizacionMasivaCuota salida = new() {
+					CantCuotasInsertadas = 0,
+					CantCuotasActualizadas = 0
+				};
 
-				if (cuotaExistente == null) {
-					await cuotaDAO.InsertarCuota(cuota);
-					salida.CantCuotasInsertadas++;
-				} else if (cuotaExistente.Valor != cuota.Valor) {
-					cuotaExistente.Valor = cuota.Valor;
-					await cuotaDAO.ActualizarCuota(cuotaExistente);
-					salida.CantCuotasActualizadas++;
+				foreach (Cuota cuota in cuotasExtraidas.Cuotas) {
+					Cuota? cuotaExistente = await cuotaDAO.ObtenerCuota(cuota.Afp, cuota.Fecha, cuota.Fondo);
+
+					if (cuotaExistente == null) {
+						await cuotaDAO.InsertarCuota(cuota);
+						salida.CantCuotasInsertadas++;
+					} else if (cuotaExistente.Valor != cuota.Valor) {
+						cuotaExistente.Valor = cuota.Valor;
+						await cuotaDAO.ActualizarCuota(cuotaExistente);
+						salida.CantCuotasActualizadas++;
+					}
 				}
-			}
 
-			return salida;
-		}
+                LambdaLogger.Log(
+                    $"[POST] - [CuotaController] - [ActualizacionMasiva] - [{stopwatch.ElapsedMilliseconds} ms] - [{StatusCodes.Status200OK}] - " +
+                    $"Actualización masiva de valores cuota exitosa: {salida.CantCuotasInsertadas} insertadas y {salida.CantCuotasActualizadas} actualizadas.");
+
+                return salida;
+            } catch (Exception ex) {
+                LambdaLogger.Log(
+                    $"[POST] - [CuotaController] - [ActualizacionMasiva] - [{stopwatch.ElapsedMilliseconds} ms] - [{StatusCodes.Status500InternalServerError}] - " +
+                    $"Ocurrió un error en la actualización masiva de valores cuota. " +
+                    $"{ex}");
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
+        }
 	}
 }

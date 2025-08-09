@@ -1,9 +1,11 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Amazon.Lambda.Core;
+using Microsoft.AspNetCore.Mvc;
 using QueTalMiAFPAPI.Entities;
 using QueTalMiAFPAPI.Interfaces;
 using QueTalMiAFPAPI.Models;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -31,8 +33,24 @@ namespace QueTalMiAFPAPI.Controllers {
 		[Route("[action]")]
 		[HttpGet]
 		public async Task<ActionResult<List<MensajeUsuario>>> ObtenerMensajes(DateTime fechaDesde, DateTime fechaHasta) {
-			return await mensajeUsuarioDAO.ObtenerMensajesUsuarios(fechaDesde, fechaHasta);
-		}
+            Stopwatch stopwatch = Stopwatch.StartNew();
+
+            try {
+				List<MensajeUsuario> salida = await mensajeUsuarioDAO.ObtenerMensajesUsuarios(fechaDesde, fechaHasta);
+
+                LambdaLogger.Log(
+                    $"[GET] - [MensajeUsuarioController] - [ObtenerMensajes] - [{stopwatch.ElapsedMilliseconds} ms] - [{StatusCodes.Status200OK}] - " +
+                    $"Se obtuvo los mensajes exitosamente - Desde {fechaDesde:yyyy-MM-dd HH:mm:ss} - Hasta {fechaHasta:yyyy-MM-dd HH:mm:ss}: {salida.Count} registros.");
+
+                return salida;
+            } catch (Exception ex) {
+                LambdaLogger.Log(
+                    $"[GET] - [MensajeUsuarioController] - [ObtenerMensajes] - [{stopwatch.ElapsedMilliseconds} ms] - [{StatusCodes.Status500InternalServerError}] - " +
+                    $"Ocurrió un error al obtener los mensajes - Desde {fechaDesde:yyyy-MM-dd HH:mm:ss} - Hasta {fechaHasta:yyyy-MM-dd HH:mm:ss}. " +
+                    $"{ex}");
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
+        }
 
 		/// <summary>
 		/// Ingresar un mensaje completado en el formulario de contacto.
@@ -54,10 +72,25 @@ namespace QueTalMiAFPAPI.Controllers {
 		[Route("[action]")]
 		[HttpPost]
 		public async Task<ActionResult<MensajeUsuario>> IngresarMensaje(EntIngresarMensaje mensaje) {
-			DateTime fechaActual = TimeZoneInfo.ConvertTime(DateTime.Now, TimeZoneConverter.TZConvert.GetTimeZoneInfo("Pacific SA Standard Time"));
-			MensajeUsuario mensajeIngresado = await mensajeUsuarioDAO.IngresarMensajeUsuario(mensaje.IdTipoMensaje, fechaActual, mensaje.Nombre, mensaje.Correo, mensaje.Mensaje);
-			mensajeIngresado.TipoMensaje = await tipoMensajeDAO.ObtenerTipoMensaje(mensajeIngresado.IdTipoMensaje);					
-			return mensajeIngresado;
-		}
+            Stopwatch stopwatch = Stopwatch.StartNew();
+
+            try {
+                DateTime fechaActual = TimeZoneInfo.ConvertTime(DateTime.Now, TimeZoneConverter.TZConvert.GetTimeZoneInfo("Pacific SA Standard Time"));
+				MensajeUsuario mensajeIngresado = await mensajeUsuarioDAO.IngresarMensajeUsuario(mensaje.IdTipoMensaje, fechaActual, mensaje.Nombre, mensaje.Correo, mensaje.Mensaje);
+				mensajeIngresado.TipoMensaje = await tipoMensajeDAO.ObtenerTipoMensaje(mensajeIngresado.IdTipoMensaje);
+
+                LambdaLogger.Log(
+                    $"[POST] - [MensajeUsuarioController] - [IngresarMensaje] - [{stopwatch.ElapsedMilliseconds} ms] - [{StatusCodes.Status200OK}] - " +
+                    $"Se insertó el mensaje exitosamente - ID Mensaje: {mensajeIngresado.IdMensaje}.");
+
+                return mensajeIngresado;
+            } catch (Exception ex) {
+                LambdaLogger.Log(
+                    $"[POST] - [MensajeUsuarioController] - [IngresarMensaje] - [{stopwatch.ElapsedMilliseconds} ms] - [{StatusCodes.Status500InternalServerError}] - " +
+                    $"Ocurrió un error al insertar el mensaje. " +
+                    $"{ex}");
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
+        }
 	}
 }

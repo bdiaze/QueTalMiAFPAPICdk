@@ -1,10 +1,12 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Amazon.Lambda.Core;
+using Microsoft.AspNetCore.Mvc;
 using QueTalMiAFPAPI.Entities;
 using QueTalMiAFPAPI.Helpers;
 using QueTalMiAFPAPI.Interfaces;
 using QueTalMiAFPAPI.Models;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text.Json;
 using System.Threading.Tasks;
 
@@ -37,35 +39,50 @@ namespace QueTalMiAFPAPI.Controllers {
         [Route("[action]")]
         [HttpGet]
         public async Task<ActionResult<SalObtenerCuotas>> ObtenerCuotas(string listaAFPs, string listaFondos, string fechaInicial, string fechaFinal) {
-            string[] afps = listaAFPs.ToUpper().Replace(" ", "").Split(",");
-            string[] fondos = listaFondos.ToUpper().Replace(" ", "").Split(",");
-            string[] diaMesAnnoInicio = fechaInicial.Split("/");
-            string[] diaMesAnnoFinal = fechaFinal.Split("/");
+            Stopwatch stopwatch = Stopwatch.StartNew();
 
-            DateTime dtFechaInicio = new(
-                int.Parse(diaMesAnnoInicio[2]),
-                int.Parse(diaMesAnnoInicio[1]),
-                int.Parse(diaMesAnnoInicio[0])
-            );
-            DateTime dtFechaFinal = new(
-                int.Parse(diaMesAnnoFinal[2]),
-                int.Parse(diaMesAnnoFinal[1]),
-                int.Parse(diaMesAnnoFinal[0])
-            );
+            try {
+                string[] afps = listaAFPs.ToUpper().Replace(" ", "").Split(",");
+                string[] fondos = listaFondos.ToUpper().Replace(" ", "").Split(",");
+                string[] diaMesAnnoInicio = fechaInicial.Split("/");
+                string[] diaMesAnnoFinal = fechaFinal.Split("/");
 
-            List<CuotaUf>? cuotas = await cuotaUfComisionDAO.ObtenerCuotas(afps, fondos, dtFechaInicio, dtFechaFinal);
+                DateTime dtFechaInicio = new(
+                    int.Parse(diaMesAnnoInicio[2]),
+                    int.Parse(diaMesAnnoInicio[1]),
+                    int.Parse(diaMesAnnoInicio[0])
+                );
+                DateTime dtFechaFinal = new(
+                    int.Parse(diaMesAnnoFinal[2]),
+                    int.Parse(diaMesAnnoFinal[1]),
+                    int.Parse(diaMesAnnoFinal[0])
+                );
 
-            string jsonRetorno = JsonSerializer.Serialize(cuotas);
-            int cantBytes = System.Text.Encoding.UTF8.GetByteCount(jsonRetorno);
+                List<CuotaUf>? cuotas = await cuotaUfComisionDAO.ObtenerCuotas(afps, fondos, dtFechaInicio, dtFechaFinal);
 
-            SalObtenerCuotas retorno = new();
-            if (cantBytes > 5 * 1000 * 1000) {
-                retorno.S3Url = await s3BucketHelper.UploadFile(jsonRetorno);
-            } else {
-                retorno.ListaCuotas = cuotas;
+                string jsonRetorno = JsonSerializer.Serialize(cuotas);
+                int cantBytes = System.Text.Encoding.UTF8.GetByteCount(jsonRetorno);
+
+                SalObtenerCuotas retorno = new();
+                if (cantBytes > 5 * 1000 * 1000) {
+                    retorno.S3Url = await s3BucketHelper.UploadFile(jsonRetorno);
+                } else {
+                    retorno.ListaCuotas = cuotas;
+                }
+
+                LambdaLogger.Log(
+                    $"[GET] - [CuotaUfComisionController] - [ObtenerCuotas] - [{stopwatch.ElapsedMilliseconds} ms] - [{StatusCodes.Status200OK}] - " +
+                    $"Se obtuvo las cuotas exitosamente - AFP {listaAFPs} - Fondos {listaFondos} - Fecha Inicial {fechaInicial:yyyy-MM-dd} - Fecha Final {fechaFinal:yyyy-MM-dd}: " +
+                    $"S3 URL {retorno.S3Url} - {retorno.ListaCuotas?.Count} registros.");
+
+                return retorno;
+            } catch (Exception ex) {
+                LambdaLogger.Log(
+                    $"[GET] - [CuotaUfComisionController] - [ObtenerCuotas] - [{stopwatch.ElapsedMilliseconds} ms] - [{StatusCodes.Status500InternalServerError}] - " +
+                    $"Ocurrió un error al obtener las cuotas - AFP {listaAFPs} - Fondos {listaFondos} - Fecha Inicial {fechaInicial:yyyy-MM-dd} - Fecha Final {fechaFinal:yyyy-MM-dd}. " +
+                    $"{ex}");
+                return StatusCode(StatusCodes.Status500InternalServerError);
             }
-
-            return retorno;
         }
 
         /// <summary>
@@ -88,44 +105,58 @@ namespace QueTalMiAFPAPI.Controllers {
         [Route("[action]")]
         [HttpPost]
         public async Task<ActionResult<List<SalObtenerUltimaCuota>>> ObtenerUltimaCuota(EntObtenerUltimaCuota entrada) {
-            string[] afps = entrada.ListaAFPs.ToUpper().Replace(" ", "").Split(",");
-            string[] fondos = entrada.ListaFondos.ToUpper().Replace(" ", "").Split(",");
-            string[] fechas = entrada.ListaFechas.Replace(" ", "").Split(",");
+            Stopwatch stopwatch = Stopwatch.StartNew();
 
-            List<SalObtenerUltimaCuota> retorno = [];
-            foreach (string fecha in fechas) {
-                string[] diaMesAnno = fecha.Split("/");
+            try {
+                string[] afps = entrada.ListaAFPs.ToUpper().Replace(" ", "").Split(",");
+                string[] fondos = entrada.ListaFondos.ToUpper().Replace(" ", "").Split(",");
+                string[] fechas = entrada.ListaFechas.Replace(" ", "").Split(",");
 
-                DateTime dtFecha = new(
-                        int.Parse(diaMesAnno[2]),
-                        int.Parse(diaMesAnno[1]),
-                        int.Parse(diaMesAnno[0]));
+                List<SalObtenerUltimaCuota> retorno = [];
+                foreach (string fecha in fechas) {
+                    string[] diaMesAnno = fecha.Split("/");
 
-                foreach (string afp in afps) {
-                    foreach (string fondo in fondos) {
-                        CuotaUfComision? cuota = await cuotaUfComisionDAO.ObtenerUltimaCuota(afp, fondo, dtFecha);
+                    DateTime dtFecha = new(
+                            int.Parse(diaMesAnno[2]),
+                            int.Parse(diaMesAnno[1]),
+                            int.Parse(diaMesAnno[0]));
 
-                        if (cuota != null) {
-                            decimal? comision;
-                            if (entrada.TipoComision == Comision.TIPO_COMIS_DEPOS_COTIZ_OBLIG) {
-                                comision = cuota.ComisDeposCotizOblig;
-                            } else {
-                                comision = cuota.ComisAdminCtaAhoVol;
+                    foreach (string afp in afps) {
+                        foreach (string fondo in fondos) {
+                            CuotaUfComision? cuota = await cuotaUfComisionDAO.ObtenerUltimaCuota(afp, fondo, dtFecha);
+
+                            if (cuota != null) {
+                                decimal? comision;
+                                if (entrada.TipoComision == Comision.TIPO_COMIS_DEPOS_COTIZ_OBLIG) {
+                                    comision = cuota.ComisDeposCotizOblig;
+                                } else {
+                                    comision = cuota.ComisAdminCtaAhoVol;
+                                }
+
+                                retorno.Add(new SalObtenerUltimaCuota() {
+                                    Afp = cuota.Afp,
+                                    Fecha = cuota.Fecha,
+                                    Fondo = cuota.Fondo,
+                                    Valor = cuota.Valor,
+                                    Comision = comision
+                                });
                             }
-
-                            retorno.Add(new SalObtenerUltimaCuota() {
-                                Afp = cuota.Afp,
-                                Fecha = cuota.Fecha,
-                                Fondo = cuota.Fondo,
-                                Valor = cuota.Valor,
-                                Comision = comision
-                            });
                         }
                     }
                 }
-            }
 
-            return retorno;
+                LambdaLogger.Log(
+                    $"[POST] - [CuotaUfComisionController] - [ObtenerUltimaCuota] - [{stopwatch.ElapsedMilliseconds} ms] - [{StatusCodes.Status200OK}] - " +
+                    $"Se obtuvo la última cuota exitosamente - AFP {entrada.ListaAFPs} - Fondos {entrada.ListaFondos} - Fechas {entrada.ListaFechas}: {retorno.Count} registros.");
+
+                return retorno;
+            } catch (Exception ex) {
+                LambdaLogger.Log(
+                    $"[POST] - [CuotaUfComisionController] - [ObtenerUltimaCuota] - [{stopwatch.ElapsedMilliseconds} ms] - [{StatusCodes.Status500InternalServerError}] - " +
+                    $"Ocurrió un error al obtener la última cuota - AFP {entrada.ListaAFPs} - Fondos {entrada.ListaFondos} - Fechas {entrada.ListaFechas}. " +
+                    $"{ex}");
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
         }
 
         /// <summary>
@@ -151,29 +182,44 @@ namespace QueTalMiAFPAPI.Controllers {
         [Route("[action]")]
         [HttpGet]
         public async Task<ActionResult<List<RentabilidadReal>>> ObtenerRentabilidadReal(string listaAFPs, string listaFondos, DateTime fechaInicial, DateTime fechaFinal) {
-            string[] afps = listaAFPs.ToUpper().Replace(" ", "").Split(",");
-            string[] fondos = listaFondos.ToUpper().Replace(" ", "").Split(",");
+            Stopwatch stopwatch = Stopwatch.StartNew();
 
-            List<RentabilidadReal> retorno = [];
-            foreach (string fondo in fondos) {
-                foreach (string afp in afps) {
-                    CuotaUfComision? cuotaInicial = await cuotaUfComisionDAO.ObtenerUltimaCuota(afp, fondo, fechaInicial);
-                    CuotaUfComision? cuotaFinal = await cuotaUfComisionDAO.ObtenerUltimaCuota(afp, fondo, fechaFinal);
+            try {
+                string[] afps = listaAFPs.ToUpper().Replace(" ", "").Split(",");
+                string[] fondos = listaFondos.ToUpper().Replace(" ", "").Split(",");
 
-                    if (cuotaInicial?.ValorUf != null && cuotaFinal?.ValorUf != null) {
-                        retorno.Add(new RentabilidadReal() { 
-                            Afp = afp,
-                            Fondo = fondo,
-                            ValorCuotaInicial = cuotaInicial.Valor,
-                            ValorUfInicial = cuotaInicial.ValorUf.Value,
-                            ValorCuotaFinal = cuotaFinal.Valor,
-                            ValorUfFinal = cuotaFinal.ValorUf.Value,
-                            Rentabilidad = (cuotaFinal.Valor * cuotaInicial.ValorUf.Value / (cuotaInicial.Valor * cuotaFinal.ValorUf.Value) - 1) * 100
-                        });
+                List<RentabilidadReal> retorno = [];
+                foreach (string fondo in fondos) {
+                    foreach (string afp in afps) {
+                        CuotaUfComision? cuotaInicial = await cuotaUfComisionDAO.ObtenerUltimaCuota(afp, fondo, fechaInicial);
+                        CuotaUfComision? cuotaFinal = await cuotaUfComisionDAO.ObtenerUltimaCuota(afp, fondo, fechaFinal);
+
+                        if (cuotaInicial?.ValorUf != null && cuotaFinal?.ValorUf != null) {
+                            retorno.Add(new RentabilidadReal() { 
+                                Afp = afp,
+                                Fondo = fondo,
+                                ValorCuotaInicial = cuotaInicial.Valor,
+                                ValorUfInicial = cuotaInicial.ValorUf.Value,
+                                ValorCuotaFinal = cuotaFinal.Valor,
+                                ValorUfFinal = cuotaFinal.ValorUf.Value,
+                                Rentabilidad = (cuotaFinal.Valor * cuotaInicial.ValorUf.Value / (cuotaInicial.Valor * cuotaFinal.ValorUf.Value) - 1) * 100
+                            });
+                        }
                     }
-                }
-			}
-            return retorno;
+			    }
+
+                LambdaLogger.Log(
+                    $"[GET] - [CuotaUfComisionController] - [ObtenerRentabilidadReal] - [{stopwatch.ElapsedMilliseconds} ms] - [{StatusCodes.Status200OK}] - " +
+                    $"Se obtuvo la rentabilidad real exitosamente - AFP {listaAFPs} - Fondos {listaFondos} - Fecha Inicial {fechaInicial:yyyy-MM-dd} - Fecha Final {fechaFinal:yyyy-MM-dd}: {retorno.Count} registros.");
+
+                return retorno;
+            } catch (Exception ex) {
+                LambdaLogger.Log(
+                    $"[GET] - [CuotaUfComisionController] - [ObtenerRentabilidadReal] - [{stopwatch.ElapsedMilliseconds} ms] - [{StatusCodes.Status500InternalServerError}] - " +
+                    $"Ocurrió un error al obtener la rentabilidad real - AFP {listaAFPs} - Fondos {listaFondos} - Fecha Inicial {fechaInicial:yyyy-MM-dd} - Fecha Final {fechaFinal:yyyy-MM-dd}. " +
+                    $"{ex}");
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
         }
 
         /// <summary>
@@ -189,8 +235,23 @@ namespace QueTalMiAFPAPI.Controllers {
         [Route("[action]")]
         [HttpGet]
         public async Task<ActionResult<DateTime>> UltimaFechaTodas() {
-            DateTime ultimaFecha = await cuotaUfComisionDAO.ObtenerUltimaFechaTodas();
-            return ultimaFecha;
+            Stopwatch stopwatch = Stopwatch.StartNew();
+
+            try {
+                DateTime ultimaFecha = await cuotaUfComisionDAO.ObtenerUltimaFechaTodas();
+
+                LambdaLogger.Log(
+                    $"[GET] - [CuotaUfComisionController] - [UltimaFechaTodas] - [{stopwatch.ElapsedMilliseconds} ms] - [{StatusCodes.Status200OK}] - " +
+                    $"Se obtuvo la última fecha con todos los valores cuota exitosamente.");
+
+                return ultimaFecha;
+            } catch (Exception ex) {
+                LambdaLogger.Log(
+                    $"[GET] - [CuotaUfComisionController] - [UltimaFechaTodas] - [{stopwatch.ElapsedMilliseconds} ms] - [{StatusCodes.Status500InternalServerError}] - " +
+                    $"Ocurrió un error al obtener la última fecha con todos los valores cuota. " +
+                    $"{ex}");
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
         }
 
         /// <summary>
@@ -206,8 +267,23 @@ namespace QueTalMiAFPAPI.Controllers {
         [Route("[action]")]
         [HttpGet]
         public async Task<ActionResult<DateTime>> UltimaFechaAlguna() {
-            DateTime ultimaFecha = await cuotaUfComisionDAO.ObtenerUltimaFechaAlguna();
-            return ultimaFecha;
+            Stopwatch stopwatch = Stopwatch.StartNew();
+
+            try {
+                DateTime ultimaFecha = await cuotaUfComisionDAO.ObtenerUltimaFechaAlguna();
+
+                LambdaLogger.Log(
+                    $"[GET] - [CuotaUfComisionController] - [UltimaFechaAlguna] - [{stopwatch.ElapsedMilliseconds} ms] - [{StatusCodes.Status200OK}] - " +
+                    $"Se obtuvo la última fecha con algún valor cuota exitosamente.");
+
+                return ultimaFecha;
+            } catch (Exception ex) {
+                LambdaLogger.Log(
+                    $"[GET] - [CuotaUfComisionController] - [UltimaFechaAlguna] - [{stopwatch.ElapsedMilliseconds} ms] - [{StatusCodes.Status500InternalServerError}] - " +
+                    $"Ocurrió un error al obtener la última fecha con algún valor cuota. " +
+                    $"{ex}");
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
         }
     }
 }
