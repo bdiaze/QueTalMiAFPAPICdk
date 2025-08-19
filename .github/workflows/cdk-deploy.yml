@@ -26,9 +26,10 @@ jobs:
             SUBNET_ID_1: ${{ vars.SUBNET_ID_1 }}
             SUBNET_ID_2: ${{ vars.SUBNET_ID_2 }}
             RDS_SECURITY_GROUP_ID: ${{ vars.RDS_SECURITY_GROUP_ID }}
-            ALLOWED_DOMAINS: ${{ vars.ALLOWED_DOMAINS }}
             SECRET_ARN_CONNECTION_STRING: ${{ vars.SECRET_ARN_CONNECTION_STRING }}
             PARAMETER_NAME_API_ALLOWED_DOMAINS: ${{ vars.PARAMETER_NAME_API_ALLOWED_DOMAINS }}
+            ALLOWED_DOMAINS: ${{ vars.ALLOWED_DOMAINS }}
+            PARAMETER_ARN_SES_DIRECCION_DE_DEFECTO: ${{ vars.PARAMETER_ARN_SES_DIRECCION_DE_DEFECTO }}
                         
         steps:
             - name: Checkout Repositorio

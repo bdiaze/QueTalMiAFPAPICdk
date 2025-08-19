@@ -26,9 +26,10 @@ namespace Cdk {
             string subnetId1 = System.Environment.GetEnvironmentVariable("SUBNET_ID_1") ?? throw new ArgumentNullException("SUBNET_ID_1");
             string subnetId2 = System.Environment.GetEnvironmentVariable("SUBNET_ID_2") ?? throw new ArgumentNullException("SUBNET_ID_2");
             string rdsSecurityGroupId = System.Environment.GetEnvironmentVariable("RDS_SECURITY_GROUP_ID") ?? throw new ArgumentNullException("RDS_SECURITY_GROUP_ID");
-            string allowedDomains = System.Environment.GetEnvironmentVariable("ALLOWED_DOMAINS") ?? throw new ArgumentNullException("ALLOWED_DOMAINS");
             string secretArnConnectionString = System.Environment.GetEnvironmentVariable("SECRET_ARN_CONNECTION_STRING") ?? throw new ArgumentNullException("SECRET_ARN_CONNECTION_STRING");
             string parameterNameApiAllowedDomains = System.Environment.GetEnvironmentVariable("PARAMETER_NAME_API_ALLOWED_DOMAINS") ?? throw new ArgumentNullException("PARAMETER_NAME_API_ALLOWED_DOMAINS");
+            string allowedDomains = System.Environment.GetEnvironmentVariable("ALLOWED_DOMAINS") ?? throw new ArgumentNullException("ALLOWED_DOMAINS");
+            string parameterArnSesDireccionDeDefecto = System.Environment.GetEnvironmentVariable("PARAMETER_ARN_SES_DIRECCION_DE_DEFECTO") ?? throw new ArgumentNullException("PARAMETER_ARN_SES_DIRECCION_DE_DEFECTO");
 
             // Se obtiene la VPC y subnets...
             IVpc vpc = Vpc.FromLookup(this, $"{appName}Vpc", new VpcLookupOptions {
@@ -109,6 +110,8 @@ namespace Cdk {
                                     ],
                                     Resources = [
                                         stringParameterApiAllowedDomains.ParameterArn,
+                                        parameterArnSesDireccionDeDefecto,
+
                                     ],
                                 }),
                                 new PolicyStatement(new PolicyStatementProps{
@@ -118,6 +121,16 @@ namespace Cdk {
                                     ],
                                     Resources = [
                                         $"{bucket.BucketArn}/*",
+                                    ],
+                                }),
+                                new PolicyStatement(new PolicyStatementProps{
+                                    Sid = $"{appName}AccessToSendEmail",
+                                    Actions = [
+                                        "ses:SendEmail",
+                                        "ses:SendRawEmail"
+                                    ],
+                                    Resources = [
+                                        $"*",
                                     ],
                                 }),
                             ]
@@ -138,9 +151,10 @@ namespace Cdk {
                 LogGroup = logGroup,
                 Environment = new Dictionary<string, string> {
                     { "APP_NAME", appName },
+                    { "BUCKET_NAME_LARGE_RESPONSES", bucket.BucketName },
                     { "SECRET_ARN_CONNECTION_STRING", secretArnConnectionString },
                     { "PARAMETER_ARN_API_ALLOWED_DOMAINS", stringParameterApiAllowedDomains.ParameterArn },
-                    { "BUCKET_NAME_LARGE_RESPONSES", bucket.BucketName }
+                    { "PARAMETER_ARN_SES_DIRECCION_DE_DEFECTO", parameterArnSesDireccionDeDefecto },
                 },
                 Vpc = vpc,
                 VpcSubnets = new SubnetSelection {
