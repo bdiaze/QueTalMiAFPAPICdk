@@ -2,10 +2,12 @@ using Amazon.S3;
 using QueTalMiAFPAPI.Helpers;
 using QueTalMiAFPAPI.Interfaces;
 using QueTalMiAFPAPI.Repositories;
+using System.Runtime;
 
 var builder = WebApplication.CreateBuilder(args);
 
-string parameterArnApiAllowedDomains = Environment.GetEnvironmentVariable("PARAMETER_ARN_API_ALLOWED_DOMAINS") ?? throw new ArgumentNullException("PARAMETER_ARN_API_ALLOWED_DOMAINS");
+EnvironmentVariable environmentVariable = new(builder.Configuration);
+string parameterArnApiAllowedDomains = environmentVariable.GetValue("PARAMETER_ARN_API_ALLOWED_DOMAINS");
 string[] allowedDomains = (await ParameterStore.ObtenerParametro(parameterArnApiAllowedDomains)).Split(",");
 
 builder.Services.AddControllers();
@@ -27,8 +29,8 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddAWSService<IAmazonS3>();
+builder.Services.AddSingleton<EnvironmentVariable, EnvironmentVariable>();
 builder.Services.AddSingleton<S3BucketHelper, S3BucketHelper>();
-
 builder.Services.AddSingleton<ConnectionString, ConnectionString>();
 builder.Services.AddSingleton<IComisionDAO, ComisionDAO>();
 builder.Services.AddSingleton<ICuotaDAO, CuotaDAO>();

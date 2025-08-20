@@ -12,7 +12,7 @@ using Newtonsoft.Json;
 namespace QueTalMiAFPAPI.Controllers {
     [Route("[controller]")]
     [ApiController]
-    public class CorreoController : ControllerBase {
+    public class CorreoController(EnvironmentVariable environmentVariable) : ControllerBase {
 
         [Route("[action]")]
         [HttpPost]
@@ -20,7 +20,7 @@ namespace QueTalMiAFPAPI.Controllers {
             Stopwatch stopwatch = Stopwatch.StartNew();
 
             if (correo.De == null) {
-                string parameterArnSesDireccionDeDefecto = Environment.GetEnvironmentVariable("PARAMETER_ARN_SES_DIRECCION_DE_DEFECTO") ?? throw new ArgumentNullException("PARAMETER_ARN_SES_DIRECCION_DE_DEFECTO");
+                string parameterArnSesDireccionDeDefecto = environmentVariable.GetValue("PARAMETER_ARN_SES_DIRECCION_DE_DEFECTO");
                 string strDireccionDeDefecto = await ParameterStore.ObtenerParametro(parameterArnSesDireccionDeDefecto) ?? throw new ArgumentNullException("PARAMETER_SES_DIRECCION_DE_DEFECTO");
                 dynamic? direccionDeDefecto = JsonConvert.DeserializeObject<dynamic>(strDireccionDeDefecto);
 

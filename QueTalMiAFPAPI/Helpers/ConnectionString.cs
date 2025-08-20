@@ -1,5 +1,5 @@
 ﻿namespace QueTalMiAFPAPI.Helpers {
-    public class ConnectionString {
+    public class ConnectionString(EnvironmentVariable environmentVariable, IConfiguration config) {
 
         private string? _connectionString = null;
 
@@ -8,8 +8,14 @@
                 return _connectionString;
             }
 
-            string secretArnConnectionString = Environment.GetEnvironmentVariable("SECRET_ARN_CONNECTION_STRING") ?? throw new ArgumentNullException("SECRET_ARN_CONNECTION_STRING");
+            string secretArnConnectionString = environmentVariable.GetValue("SECRET_ARN_CONNECTION_STRING");
             dynamic connectionString = await SecretManager.ObtenerSecreto(secretArnConnectionString);
+
+#if DEBUG
+            connectionString.Host = config["Develop:Database:Host"];
+            connectionString.QueTalMiAFPAppUsername = config["Develop:Database:User"];
+            connectionString.QueTalMiAFPAppPassword = config["Develop:Database:Pass"];
+#endif
 
             _connectionString = $"Server={connectionString.Host};Port={connectionString.Port};SslMode=prefer;" +
                 $"Database={connectionString.QueTalMiAFPDatabase};User Id={connectionString.QueTalMiAFPAppUsername};Password='{connectionString.QueTalMiAFPAppPassword}';";

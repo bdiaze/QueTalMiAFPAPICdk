@@ -3,10 +3,10 @@ using Amazon.S3.Model;
 using System.Text;
 
 namespace QueTalMiAFPAPI.Helpers {
-    public class S3BucketHelper(IAmazonS3 amazonS3) {
+    public class S3BucketHelper(IAmazonS3 amazonS3, EnvironmentVariable environmentVariable) {
 
         public async Task<string> UploadFile(string contenido) {
-            string bucketName = Environment.GetEnvironmentVariable("BUCKET_NAME_LARGE_RESPONSES") ?? throw new ArgumentNullException("BUCKET_NAME_LARGE_RESPONSES");
+            string bucketName = environmentVariable.GetValue("BUCKET_NAME_LARGE_RESPONSES");
             string keyName = Guid.NewGuid().ToString();
 
             using MemoryStream stream = new();
