@@ -29,8 +29,7 @@ namespace Cdk {
             string secretArnConnectionString = System.Environment.GetEnvironmentVariable("SECRET_ARN_CONNECTION_STRING") ?? throw new ArgumentNullException("SECRET_ARN_CONNECTION_STRING");
             string parameterNameApiAllowedDomains = System.Environment.GetEnvironmentVariable("PARAMETER_NAME_API_ALLOWED_DOMAINS") ?? throw new ArgumentNullException("PARAMETER_NAME_API_ALLOWED_DOMAINS");
             string allowedDomains = System.Environment.GetEnvironmentVariable("ALLOWED_DOMAINS") ?? throw new ArgumentNullException("ALLOWED_DOMAINS");
-            string parameterArnSesDireccionDeDefecto = System.Environment.GetEnvironmentVariable("PARAMETER_ARN_SES_DIRECCION_DE_DEFECTO") ?? throw new ArgumentNullException("PARAMETER_ARN_SES_DIRECCION_DE_DEFECTO");
-
+            
             // Se obtiene la VPC y subnets...
             IVpc vpc = Vpc.FromLookup(this, $"{appName}Vpc", new VpcLookupOptions {
                 VpcId = vpcId
@@ -110,7 +109,6 @@ namespace Cdk {
                                     ],
                                     Resources = [
                                         stringParameterApiAllowedDomains.ParameterArn,
-                                        parameterArnSesDireccionDeDefecto,
 
                                     ],
                                 }),
@@ -121,16 +119,6 @@ namespace Cdk {
                                     ],
                                     Resources = [
                                         $"{bucket.BucketArn}/*",
-                                    ],
-                                }),
-                                new PolicyStatement(new PolicyStatementProps{
-                                    Sid = $"{appName}AccessToSendEmail",
-                                    Actions = [
-                                        "ses:SendEmail",
-                                        "ses:SendRawEmail"
-                                    ],
-                                    Resources = [
-                                        $"*",
                                     ],
                                 }),
                             ]
@@ -154,7 +142,6 @@ namespace Cdk {
                     { "BUCKET_NAME_LARGE_RESPONSES", bucket.BucketName },
                     { "SECRET_ARN_CONNECTION_STRING", secretArnConnectionString },
                     { "PARAMETER_ARN_API_ALLOWED_DOMAINS", stringParameterApiAllowedDomains.ParameterArn },
-                    { "PARAMETER_ARN_SES_DIRECCION_DE_DEFECTO", parameterArnSesDireccionDeDefecto },
                 },
                 Vpc = vpc,
                 VpcSubnets = new SubnetSelection {
